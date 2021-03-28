@@ -1,0 +1,3 @@
+[submodule "swtc"]
+	path = swtc
+	url = https://github.com/elbassbasi/swtc.git
