@@ -17,15 +17,17 @@ public:
 	virtual bool Execute(ExecutionEvent &event) = 0;
 
 };
-
+template<>
+inline const IID __IID<ICommand>() {
+	return IID_ICommand;
+}
 class Command: public ICommand {
 public:
 	IObject* QueryInterface(IID Id);
-	int IncRef();
-	int DecRef();
+	ObjectRef* GetRef(int *tmp);
 	bool Execute(ExecutionEvent &event);
 private:
-	int ref;
+	ObjectRef ref;
 };
 
 #endif /* ICODE_INCLUDE_UI_ICOMMAND_H_ */

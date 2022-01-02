@@ -12,7 +12,7 @@
 #include "zlib.h"
 class ZStream: public IStream {
 protected:
-	int ref;
+	ObjectRef ref;
 	int flags;
 	IStream *stream;
 	z_stream strm;
@@ -23,8 +23,7 @@ public:
 	bool OpenForWrite(IStream *stream,int level, int flags);
 	bool OpenForRead(IStream *stream,int flags);
 	IObject* QueryInterface(IID Id);
-	int IncRef();
-	int DecRef();
+	ObjectRef* GetRef(int *tmp);
 	bool GetProperty(IID Id,WValue& value);
 	bool SetProperty(IID Id,WValue& value);
 	WResult Close();

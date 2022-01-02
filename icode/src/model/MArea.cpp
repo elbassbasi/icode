@@ -6,12 +6,13 @@
  */
 
 #include "MArea.h"
-#include "MPerspective.h"
+#include "MWindow.h"
 
 MPart0::MPart0() {
 	this->flags = 0;
-	this->parent = 0;
+	this->parentPart = 0;
 	this->name = 0;
+	this->weight = 0;
 }
 
 MPart0::~MPart0() {
@@ -19,23 +20,28 @@ MPart0::~MPart0() {
 MPartStack::MPartStack() {
 	this->flags = MPART_TYPE_STACK;
 	this->weight = 0;
+	this->id = -1;
 }
 
 MPartStack::~MPartStack() {
 }
+ObjectRef* MPartStack::GetRef(int *tmp) {
+	tmp[0] = -1;
+	return new (tmp) ObjectRef();
+}
 void MPartStack::GetPartBounds(WRect &r) {
-	if (parent->GetType() == MPART_TYPE_AREA) {
-		((MArea*) parent)->GetPartBounds(r);
+	if (parentPart->GetType() == MPART_TYPE_AREA) {
+		((MArea*) parentPart)->GetPartBounds(r);
 	} else {
-		((MPartSashContainer*) parent)->GetChildBounds(r, this);
+		((MPartSashContainer*) parentPart)->GetChildBounds(r, this);
 	}
 }
 void MPartStack::SetWeight(int weight) {
 	if (weight < 1 || weight > 100)
 		return;
-	MPart0 *parent = this->parent;
-	if (this->parent->GetType() == MPART_TYPE_SASHCONTAINER) {
-		MPartSashContainer *c = (MPartSashContainer*) this->parent;
+	MPart0 *parent = this->parentPart;
+	if (this->parentPart->GetType() == MPART_TYPE_SASHCONTAINER) {
+		MPartSashContainer *c = (MPartSashContainer*) this->parentPart;
 		int first, last;
 		if (c->first == this) {
 			first = weight;
@@ -47,22 +53,36 @@ void MPartStack::SetWeight(int weight) {
 		c->SetWeight(first, last);
 	}
 }
-
-void MPartStack::AddView(const char *viewId) {
-	IViewPart* view = ICodePlugin::Get()->CreateView(viewId);
-	if(view == 0) return;
+void MPartStack::AddView(StringId *viewId) {
+	IObject *obj = ICodePlugin::Get()->GetViewManager()->CreateView(viewId);
+	if (obj == 0)
+		return;
+	IViewPart *view = obj->QueryInterfaceT<IViewPart>();
+	if (view == 0) {
+		obj->Release();
+		return;
+	}
 	WTabItem item;
 	this->AppendItem(item, view->GetTitle());
-	if(!item.IsOk()){
-		view->DecRef();
-	}else{
-		WControl* control = view->GetPartControl(this);
-		if(control != 0){
+	if (!item.IsOk()) {
+		view->Release();
+	} else {
+		WControl *control = view->GetPartControl(this);
+		if (control != 0) {
 			item.SetControl(control);
-		}else{
+		} else {
 
 		}
 	}
+}
+bool MPartStack::OnItemClose(WTabEvent &e) {
+	WControl *c = e.item->GetControl();
+	if (c != 0) {
+		e.item->SetControl(0);
+		c->Dispose();
+	}
+	e.item->Remove();
+	return W_TRUE;
 }
 void MPartStack::UpdateBounds(WRect &r) {
 	this->SetBounds(r);
@@ -75,205 +95,97 @@ MPartSashContainer::MPartSashContainer() {
 }
 
 MPartSashContainer::~MPartSashContainer() {
+	if (this->first != 0) {
+		delete this->first;
+	}
+	if (this->last != 0) {
+		delete this->last;
+	}
 }
 void MPartSashContainer::GetPartBounds(WRect &r) {
-	if (parent->GetType() == MPART_TYPE_AREA) {
-		((MArea*) parent)->GetPartBounds(r);
+	if (parentPart->GetType() == MPART_TYPE_AREA) {
+		((MArea*) parentPart)->GetPartBounds(r);
 	} else {
-		((MPartSashContainer*) parent)->GetChildBounds(r, this);
+		((MPartSashContainer*) parentPart)->GetChildBounds(r, this);
 	}
 }
 
 void MPartSashContainer::GetChildBounds(WRect &r, MPart0 *child) {
 	this->GetPartBounds(r);
-	int first_weight = GetFirstWeight(), last_weight = GetLastWeight();
+	int first_weight = this->first->weight, last_weight = this->last->weight;
 	size_t total = first_weight + last_weight;
 	if (total == 0)
 		total = 1;
 	if (this->first == child) {
-		if (this->flags & MPART_VERTICAL) {
+		if (IsVertical(this->flags)) {
 			r.width = (first_weight * (r.width - 3)) / total;
 		} else {
 			r.height = (first_weight * (r.height - 3)) / total;
 		}
-
 	} else {
-		if (this->flags & MPART_VERTICAL) {
-			r.width = (last_weight * (r.width - 3)) / total;
-			r.x += r.width + 3;
+		if (IsVertical(this->flags)) {
+			int width = r.width;
+			r.width = (last_weight * (width - 3) + total - 1) / total;
+			//r.x += r.width + 3;
+			r.x += width - r.width;
 		} else {
-			r.height = (last_weight * (r.height - 3)) / total;
-			r.y += r.height + 3;
+			int height = r.height;
+			r.height = (last_weight * (height - 3) + total - 1) / total;
+			//r.y += r.height + 3;
+			r.y += height - r.height;
 		}
 	}
 }
-
-int MPartSashContainer::GetFirstWeight() {
-	if (this->first->GetType() == MPART_TYPE_SASHCONTAINER) {
-		return ((MPartSashContainer*) this->first)->weight;
-	} else {
-		return ((MPartStack*) this->first)->weight;
-	}
-}
-
-int MPartSashContainer::GetLastWeight() {
-	if (this->last->GetType() == MPART_TYPE_SASHCONTAINER) {
-		return ((MPartSashContainer*) this->last)->weight;
-	} else {
-		return ((MPartStack*) this->last)->weight;
-	}
-}
-
-void MPartSashContainer::SetFirstWeight(int weight) {
-	if (this->first->GetType() == MPART_TYPE_SASHCONTAINER) {
-		((MPartSashContainer*) this->first)->weight = weight;
-	} else {
-		((MPartStack*) this->first)->weight = weight;
-	}
-}
-
-void MPartSashContainer::SetLastWeight(int weight) {
-	if (this->first->GetType() == MPART_TYPE_SASHCONTAINER) {
-		((MPartSashContainer*) this->last)->weight = weight;
-	} else {
-		((MPartStack*) this->last)->weight = weight;
-	}
-}
-void MPartSashContainer::SetWeight(int first, int last) {
-	int total = first + last;
-	SetFirstWeight((((long long int) first << 16) + total - 1) / total);
-	SetLastWeight((((long long int) last << 16) + total - 1) / total);
+void MPartSashContainer::SetWeight(wuint64 first, wuint64 last) {
+	wuint64 total = first + last;
+	this->first->weight = ((first << 16) + total - 1) / total;
+	this->last->weight = ((last << 16) + total - 1) / total;
 }
 void MPartSashContainer::UpdateBounds(WRect &r) {
 	WRect rect;
-	int left_weight = GetFirstWeight(), right_weight = GetLastWeight();
-	size_t total = left_weight + right_weight;
+	wuint64 left_weight = this->first->weight;
+	wuint64 right_weight = this->last->weight;
+	wuint64 total = left_weight + right_weight;
 	if (total == 0)
 		total = 1;
 	rect.x = r.x;
 	rect.y = r.y;
-	if (this->flags & MPART_VERTICAL) {
+	if (IsVertical(this->flags)) {
 		rect.width = (left_weight * (r.width - 3)) / total;
 		rect.height = r.height;
 	} else {
 		rect.width = r.width;
 		rect.height = (left_weight * (r.height - 3)) / total;
 	}
-	if (this->first->GetType() == MPART_TYPE_SASHCONTAINER) {
-		((MPartSashContainer*) this->first)->UpdateBounds(rect);
-	} else {
-		((MPartStack*) this->first)->UpdateBounds(rect);
-	}
-	if (this->flags & MPART_VERTICAL) {
+	this->first->UpdateBounds(rect);
+	if (IsVertical(this->flags)) {
 		rect.x += rect.width;
-		this->sash.SetBounds(rect.x, rect.y, 3, rect.height);
+		this->SetBounds(rect.x, rect.y, 3, rect.height);
 		rect.x += 3;
 		rect.width = (right_weight * (r.width - 3)) / total;
 	} else {
 		rect.y += rect.height;
-		this->sash.SetBounds(rect.x, rect.y, rect.width, 3);
+		this->SetBounds(rect.x, rect.y, rect.width, 3);
 		rect.y += 3;
 		rect.height = (right_weight * (r.height - 3)) / total;
 	}
-	if (this->last->GetType() == MPART_TYPE_SASHCONTAINER) {
-		((MPartSashContainer*) this->last)->UpdateBounds(rect);
-	} else {
-		((MPartStack*) this->last)->UpdateBounds(rect);
-	}
+	this->last->UpdateBounds(rect);
 }
-MArea::MArea(MPerspective *parent) {
-	this->parent = (MPart0*) parent;
-	this->flags = MPART_TYPE_AREA;
-	this->root = 0;
-	this->sharedPart = 0;
-}
-
-MArea::~MArea() {
-}
-MPartStack* MArea::CreateSharedPart() {
-	this->sharedPart = new MPartStack();
-	this->sharedPart->flags |= MPART_CONTAINER_SHARED;
-	this->sharedPart->parent = this;
-	this->sharedPart->weight = ((200 << 16) + 999) / 1000;
-	this->sharedPart->Create(GetComposite(), W_BORDER | W_CLOSE);
-	this->sharedPart->SetImageList(IManagers::Get()->GetImageList());
-	this->root = this->sharedPart;
-	return this->sharedPart;
-}
-MPartStack* MArea::Div(MPartStack *parent, int flags) {
-	MPartSashContainer *node = new MPartSashContainer();
-	MPartStack *tree = new MPartStack();
-	MPartSashContainer *p = (MPartSashContainer*) parent->parent;
-	if (flags & MPART_VERTICAL) {
-		node->flags |= MPART_VERTICAL;
-	}
-	node->weight = parent->weight;
-	if (flags & MPART_LAST) {
-		node->first = (MPartSashContainer*) parent;
-		node->last = (MPartSashContainer*) tree;
-	} else {
-		node->first = (MPartSashContainer*) tree;
-		node->last = (MPartSashContainer*) parent;
-	}
-	if (p->GetType() == MPART_TYPE_SASHCONTAINER) {
-		if (p->first == parent)
-			p->first = (MPartSashContainer*) node;
-		else
-			p->last = (MPartSashContainer*) node;
-	} else {
-		this->root = node;
-	}
-	tree->parent = node;
-	parent->parent = node;
-	node->parent = p;
-	int style;
-	if (flags & MPART_VERTICAL) {
-		style = W_VERTICAL;
-	} else {
-		style = W_HORIZONTAL;
-	}
-	node->sash.Create(GetComposite(), style);
-	node->sash.SetData(node);
-	parent->weight = ((200 << 16) + 999) / 1000;
-	tree->weight = ((200 << 16) + 999) / 1000;
-	tree->Create(GetComposite(), W_BORDER | W_CLOSE);
-	tree->SetImageList(IManagers::Get()->GetImageList());
-	return tree;
-}
-
-void MArea::GetPartBounds(WRect &r) {
-	GetPerspective()->GetAreaBounds(r);
-}
-
-void MArea::UpdateBounds(WRect &r) {
-	if (this->root != 0) {
-		if (this->root->GetType() == MPART_TYPE_SASHCONTAINER) {
-			((MPartSashContainer*) this->root)->UpdateBounds(r);
-		} else {
-			((MPartStack*) this->root)->UpdateBounds(r);
-		}
-	}
-}
-WComposite* MArea::GetComposite() {
-	return GetPerspective()->GetComposite();
-}
-bool MArea::UpdateSash(WSashEvent *event) {
+bool MPartSashContainer::OnSelection(WSashEvent &e) {
 	WRect sashBounds, area;
-	WSash *sash = (WSash*) event->widget;
-	sash->GetBounds(sashBounds);
-	MPartSashContainer *node = (MPartSashContainer*) sash->GetData();
-	node->GetPartBounds(area);
-	int shift, width, width1, width2, total;
-	if (sash->GetStyle() & W_VERTICAL) {
-		shift = event->bounds.x - sashBounds.x;
+	this->GetBounds(sashBounds);
+	this->GetPartBounds(area);
+	wint64 shift, width, width1, width2, total;
+	if (IsVertical(this->flags)) {
+		shift = e.bounds.x - sashBounds.x;
 		width = area.width;
 	} else {
-		shift = event->bounds.y - sashBounds.y;
+		shift = e.bounds.y - sashBounds.y;
 		width = area.height;
 	}
 	if (shift != 0) {
-		int left_weight = node->GetFirstWeight(), right_weight =
-				node->GetLastWeight();
+		wuint64 left_weight = this->first->weight;
+		wuint64 right_weight = this->last->weight;
 		total = left_weight + right_weight;
 		if (total == 0) {
 			total = 1;
@@ -289,49 +201,134 @@ bool MArea::UpdateSash(WSashEvent *event) {
 		if (width2 < DRAG_MINIMUM) {
 			width2 = DRAG_MINIMUM;
 		}
-		node->SetFirstWeight(((width1 << 16) + width - 1) / width);
-		node->SetLastWeight(((width2 << 16) + width - 1) / width);
-		//node->UpdateBounds(area);
-		GetPerspective()->UpdateLayout();
+		this->first->weight = ((width1 << 16) + width - 1) / width;
+		this->last->weight = ((width2 << 16) + width - 1) / width;
+		this->UpdateBounds(area);
 	}
 	return true;
 }
-
-void MArea::test() {
-	MPartStack *p1, *p2;
-	p1 = CreateSharedPart();
-	testControl(p1, "Shared");
-	p2 = testDiv(p1, "Project", MPART_FIRST | MPART_VERTICAL);
-	p2->SetWeight(20);
-	p2 = testDiv(p1, "Console", MPART_LAST | MPART_HORIZENTAL);
-	p2->SetWeight(20);
-	p1 = testDiv(p1, "Outline", MPART_LAST | MPART_VERTICAL);
-	p1->SetWeight(20);
+MArea::MArea(MWindow *parent) {
+	this->parentPart = (MPart0*) parent;
+	this->flags = MPART_TYPE_AREA;
+	this->root = 0;
+	this->sharedPart = 0;
 }
-void MArea::testControl(MPartStack *container, const char *name) {
-	char txt[0x50];
-	WTabItem item;
-	WTextEdit *c;
-	for (int i = 0; i < 7; i++) {
-		sprintf(txt, "%s%d", name, i);
-		if (i < 3) {
-			c = new WTextEdit(container,
-					W_MULTI | W_HSCROLL | W_VSCROLL | W_FREE_MEMORY);
-			c->SetText(txt);
-			container->AppendItem(item,txt);
-			item.SetControl(c);
-			item.SetImage(0);
-		} else {
-			container->AppendItem(item,txt);
-			item.SetImage(1);
-		}
+
+MArea::~MArea() {
+	if (this->root != 0) {
+		delete this->root;
 	}
 }
 
-MPartStack* MArea::testDiv(MPartStack *parent, const char *name, int flags) {
-	MPartStack *tree = Div(parent, flags);
-	tree->name = name;
-	testControl(tree, name);
+MPartStack* MArea::CreateSharedPart() {
+	this->sharedPart = new MPartStack();
+	this->sharedPart->flags |= MPART_TYPE_SHARED;
+	this->sharedPart->parentPart = this;
+	this->sharedPart->weight = ((200 << 16) + 999) / 1000;
+	this->sharedPart->Create(GetWindow(), W_BORDER | W_CLOSE);
+	this->sharedPart->SetImageList(ICodePlugin::Get()->GetImageList16());
+	this->root = this->sharedPart;
+	return this->sharedPart;
+}
+MPartStack* MArea::FindPartId(MPart0 *part, int refIndex) {
+	if (part->GetType() == MPART_TYPE_SASHCONTAINER) {
+		MPartSashContainer *container = static_cast<MPartSashContainer*>(part);
+		MPartStack *stack = FindPartId(container->first, refIndex);
+		if (stack != 0)
+			return stack;
+		return FindPartId(container->last, refIndex);
+	}
+	if (part->GetType() == MPART_TYPE_STACK) {
+		MPartStack *stack = static_cast<MPartStack*>(part);
+		if (stack->id == refIndex)
+			return stack;
+		else
+			return 0;
+	}
+	return 0;
+}
+void MArea::LoadFolders(PerspectiveFolder *folders, int count) {
+	MPartStack *shared = CreateSharedPart();
+	for (int i = 0; i < count; i++) {
+		int refIndex = folders[i].refIndex;
+		MPartStack *part = FindPartId(this->root, refIndex);
+		if (part == 0)
+			part = GetSharedPart();
+		int relationShip = folders[i].relationship;
+		MPartStack *c = Div(part, folders[i].ratio, relationShip);
+		c->id = i;
+		PerspectivePart *parts;
+		int viewCount = folders[i].parts.GetCount(parts);
+		for (int j = 0; j < viewCount; j++) {
+			if (parts[j].type == 0) {
+				c->AddView(parts[j].id);
+			}
+		}
+	}
+}
+MPartStack* MArea::Div(MPartStack *parent, float ratio, int flags) {
+	MPartSashContainer *node = new MPartSashContainer();
+	MPartStack *tree = new MPartStack();
+	MPartSashContainer *p = (MPartSashContainer*) parent->parentPart;
+	if ((flags & MPART_MASK) == MPART_LEFT) {
+		node->flags = (node->flags & (~MPART_MASK)) | MPART_LEFT;
+		node->first = (MPartSashContainer*) tree;
+		node->last = (MPartSashContainer*) parent;
+	} else if ((flags & MPART_MASK) == MPART_RIGHT) {
+		node->flags = (node->flags & (~MPART_MASK)) | MPART_RIGHT;
+		node->first = (MPartSashContainer*) parent;
+		node->last = (MPartSashContainer*) tree;
+	} else if ((flags & MPART_MASK) == MPART_TOP) {
+		node->flags = (node->flags & (~MPART_MASK)) | MPART_TOP;
+		node->first = (MPartSashContainer*) tree;
+		node->last = (MPartSashContainer*) parent;
+	} else if ((flags & MPART_MASK) == MPART_BOTTOM) {
+		node->flags = (node->flags & (~MPART_MASK)) | MPART_BOTTOM;
+		node->first = (MPartSashContainer*) parent;
+		node->last = (MPartSashContainer*) tree;
+	}
+	node->weight = parent->weight;
+	if (p->GetType() == MPART_TYPE_SASHCONTAINER) {
+		if (p->first == parent)
+			p->first = (MPartSashContainer*) node;
+		else
+			p->last = (MPartSashContainer*) node;
+	} else {
+		this->root = node;
+	}
+	tree->parentPart = node;
+	parent->parentPart = node;
+	node->parentPart = p;
+	int style;
+	if (IsVertical(flags)) {
+		style = W_VERTICAL;
+	} else {
+		style = W_HORIZONTAL;
+	}
+	node->Create(GetWindow(), style);
+	node->SetData(node);
+	//node->SetSelectionAction(GetWindow(), W_ACTION(MWindow::UpdateSash));
+	parent->weight = ((200 << 16) + 999) / 1000;
+	tree->weight = ((200 << 16) + 999) / 1000;
+	tree->Create(GetWindow(), W_BORDER | W_CLOSE);
+	tree->SetImageList(ICodePlugin::GetImageList16());
 	return tree;
 }
 
+void MArea::GetPartBounds(WRect &r) {
+	MWindow *window = GetWindow();
+	window->GetAreaRect(r);
+}
+
+void MArea::UpdateBounds() {
+	if (this->root != 0) {
+		WRect r;
+		GetPartBounds(r);
+		UpdateBounds(r);
+	}
+}
+void MArea::UpdateBounds(WRect &r) {
+	if (this->root != 0) {
+		this->root->UpdateBounds(r);
+	}
+}

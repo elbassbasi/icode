@@ -7,7 +7,6 @@
 
 #include "../icode.h"
 ZStream::ZStream() {
-	this->ref = 0;
 	this->flags = 0;
 	this->stream = 0;
 }
@@ -42,22 +41,16 @@ bool ZStream::OpenForRead(IStream *stream, int flags) {
 }
 IObject* ZStream::QueryInterface(IID Id) {
 	switch (Id) {
-	case iid_IStream:
-		return Cast<IStream>();
+	case IID_IStream:
+		return static_cast<IStream*>(this);
 		break;
 	}
 	return IObject::QueryInterface(Id);
 }
-int ZStream::IncRef() {
-	return IObject::IncRef(ref);
-}
-int ZStream::DecRef() {
-	return IObject::DecRef(ref);
-}
-bool ZStream::GetProperty(IID Id,WValue& value) {
+bool ZStream::GetProperty(IID Id, WValue &value) {
 	return false;
 }
-bool ZStream::SetProperty(IID Id,WValue& value) {
+bool ZStream::SetProperty(IID Id, WValue &value) {
 	return false;
 }
 WResult ZStream::Close() {
@@ -68,7 +61,7 @@ WResult ZStream::Close() {
 
 WResult ZStream::Read(void *pv, size_t cb, size_t *pcbRead) {
 	WResult ret;
-	strm.next_out = (Bytef*)pv;
+	strm.next_out = (Bytef*) pv;
 	strm.avail_out = cb;
 	/* run inflate() on input until output buffer not full */
 	do {
@@ -100,12 +93,12 @@ WResult ZStream::Read(void *pv, size_t cb, size_t *pcbRead) {
 
 WResult ZStream::Write(const void *pv, size_t cb, size_t *pcbWritten) {
 	WResult ret;
-	strm.next_in =(Bytef*) pv;
+	strm.next_in = (Bytef*) pv;
 	strm.avail_in = cb;
 	/* run deflate() on input until output buffer not full, finish
 	 compression if all of source has been read in */
 	do {
-		strm.next_out = (Bytef*)this->in;
+		strm.next_out = (Bytef*) this->in;
 		strm.avail_out = sizeof(this->in);
 		ret = deflate(&strm, Z_NO_FLUSH); /* no bad return value */
 		int have = sizeof(this->in) - strm.avail_out;
@@ -141,4 +134,8 @@ WResult ZStream::GetSize(wuint64 *libNewSize) {
 
 WResult ZStream::Flush() {
 	return stream->Flush();
+}
+
+ObjectRef* ZStream::GetRef(int *tmp) {
+	return &this->ref;
 }

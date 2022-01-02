@@ -7,42 +7,37 @@
 #include "../icode.h"
 
 IObject* IObject::QueryInterface(const IID interfaceId) {
-	if (interfaceId == IObject::iid_IObject) {
+	if (interfaceId == IID_IObject) {
 		return this;
 	}
 	return 0;
 }
 
-int IObject::IncRef() {
-	return 0;
-}
-
-int IObject::DecRef() {
-	return 0;
-}
-
-int IObject::IncRef(int &ref) {
-	if (ref >= 0) {
-		return __atomic_fetch_add(&ref, 1, __ATOMIC_SEQ_CST);
+int IObject::AddRef() {
+	int tmp[2];
+	ObjectRef *ref = GetRef(tmp);
+	if (ref->ref >= 0) {
+		return __atomic_fetch_add(&ref->ref, 1, __ATOMIC_SEQ_CST);
 	} else
-		return ref;
+		return ref->ref;
 }
 
-int IObject::DecRef(int &ref) {
-	if (ref > 1) {
-		return __atomic_fetch_sub(&ref, 1, __ATOMIC_SEQ_CST);
-	} else if (ref < 0) {
-		return ref;
+int IObject::Release() {
+	int tmp[2];
+	ObjectRef *ref = GetRef(tmp);
+	if (ref->ref > 1) {
+		return __atomic_fetch_sub(&ref->ref, 1, __ATOMIC_SEQ_CST);
+	} else if (ref->ref < 0) {
+		return ref->ref;
 	} else {
 		delete this;
 		return 0;
 	}
 }
-
-bool IObject::GetProperty(IID Id,WValue& value) {
+bool IObject::GetProperty(IID Id, WValue &value) {
 	return false;
 }
 
-bool IObject::SetProperty(IID Id,WValue& value) {
+bool IObject::SetProperty(IID Id, WValue &value) {
 	return false;
 }

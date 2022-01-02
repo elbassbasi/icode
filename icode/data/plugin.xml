@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin id="icode" startup="true">
+<bin module="icode"/>
+<description>
+</description>
+<manager id="icode.MenuBar">
+	<item location="File/New/File" group="open"/>
+	<item location="File/Restart" command="Restart" group="quit"/>
+	<item location="File/Exit" command="Quit" group="quit"/>
+	<item location="Window/New Window"/>
+	<item location="Window/FullScreen" command="FullScreen"/>
+	<item location="Window/Preferences" command="Preferences"/>
+</manager>
+<manager id="icode.Image">
+	<image id="folder" location16="images/fldr.png" location32="images/fldr@2x.png"/>
+	<image id="file" location16="images/file.png" location32="images/file@2x.png"/>
+</manager>
+<manager id="icode.Command">
+	<command id="Quit" handler="icode.Quit"/>
+	<command id="Restart" handler="icode.Restart"/>
+	<command id="FullScreen" handler="icode.FullScreen"/>
+</manager>
+<manager id="icode.View">
+	<view id="ProjectExplorer" handler="icode.ProjectExplorer"/>
+</manager>
+<manager id="icode.Perspective">
+	<perspective id="Resource">
+		<folder id="left" relationship="left" ratio="0.2" refId="editorArea">
+			<view id="ProjectExplorer"/>
+		</folder>
+		<folder id="right" relationship="top" ratio="0.2" refId="editorArea">
+			<view id="ProjectExplorer"/>
+		</folder>
+	</perspective>
+</manager>
+</plugin>

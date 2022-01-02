@@ -10,7 +10,6 @@
 #include "../core/core.h"
 class IWorkbenchPart: public IObject {
 public:
-	IID_CLASS_PLATFORM(IWorkbenchPart,2,0);
 	virtual WControl* GetPartControl(WComposite *parent) = 0;
 	virtual void Dispose()= 0;
 	virtual const char* GetTitle()= 0;
@@ -18,4 +17,8 @@ public:
 	virtual const char* GetTitleToolTip()= 0;
 	virtual void SetFocus()= 0;
 };
+template<>
+inline const IID __IID<IWorkbenchPart>() {
+	return IID_IWorkbenchPart;
+}
 #endif /* ICODE_INCLUDE_UI_IWORKBENCHPART_H_ */

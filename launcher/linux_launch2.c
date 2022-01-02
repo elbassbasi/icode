@@ -8,8 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-extern int IManagersStart(int argc, char **argv);
+extern int ManagersStart(int argc, char **argv);
 int main(int argc, char* argv[]) {
-	return IManagersStart(argc,argv);
+	return ManagersStart(argc,argv);
 }
 #endif

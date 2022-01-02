@@ -9,6 +9,7 @@
 #define ICODE_INCLUDE_ICODE_H_
 #include "core/core.h"
 #include "runtime/runtime.h"
+#include "managers/_managers.h"
 #include "resources/resources.h"
 #include "text/text.h"
 #include "ui/ui.h"

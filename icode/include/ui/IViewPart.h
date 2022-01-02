@@ -12,11 +12,14 @@
 class IViewPart: public IWorkbenchPart {
 public:
 };
-
-class ICODE_PUBLIC ViewPart : public IViewPart {
+template<>
+inline const IID __IID<IViewPart>() {
+	return IID_IViewPart;
+}
+class ICODE_PUBLIC ViewPart: public IViewPart {
 public:
-	int IncRef();
-	int DecRef();
+	ObjectRef* GetRef(int *tmp);
+	IObject* QueryInterface(const IID Id);
 	WControl* GetPartControl(WComposite *parent);
 	void Dispose();
 	const char* GetTitle();
@@ -24,7 +27,7 @@ public:
 	const char* GetTitleToolTip();
 	void SetFocus();
 protected:
-	int ref;
+	ObjectRef ref;
 };
 
 #endif /* ICODE_INCLUDE_UI_IVIEWPART_H_ */

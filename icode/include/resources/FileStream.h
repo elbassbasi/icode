@@ -10,15 +10,14 @@
 #include "IStream.h"
 class FileStream: public IStream {
 protected:
-	int ref;
+	ObjectRef ref;
 	FILE* file;
 public:
 	FileStream();
 	~FileStream();
 	bool Open(const char* file,const char* mode);
 	IObject* QueryInterface(IID Id);
-	int IncRef();
-	int DecRef();
+	ObjectRef* GetRef(int *tmp);
 	bool GetProperty(IID Id,WValue& value);
 	bool SetProperty(IID Id,WValue& value);
 	WResult Close();

@@ -9,4 +9,5 @@
 #define ICODE_INCLUDE_CORE_CORE_H_
 #include "Ptr.h"
 #include "Node.h"
+#include "AVLNode.h"
 #endif /* ICODE_INCLUDE_CORE_CORE_H_ */

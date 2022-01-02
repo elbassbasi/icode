@@ -8,34 +8,27 @@
 #include "../icode.h"
 
 MemStream::MemStream() {
-	this->ref = 0;
 	this->flags = 0;
 	this->memory = 0;
 	this->allocated = 0;
 	this->pos = 0;
+	this->size = 0;
 }
 MemStream::~MemStream() {
 }
 IObject* MemStream::QueryInterface(IID Id) {
 	switch (Id) {
-	case iid_IStream:
-		return Cast<IStream>();
+	case IID_IStream:
+		return static_cast<IStream*>(this);
 		break;
 	}
 	return IObject::QueryInterface(Id);
 }
-int MemStream::IncRef() {
-	return IObject::IncRef(ref);
-}
-int MemStream::DecRef() {
-	return IObject::DecRef(ref);
-}
-
-bool MemStream::GetProperty(IID Id,WValue& value) {
+bool MemStream::GetProperty(IID Id, WValue &value) {
 	return false;
 }
 
-bool MemStream::SetProperty(IID Id,WValue& value) {
+bool MemStream::SetProperty(IID Id, WValue &value) {
 	return false;
 }
 
@@ -86,4 +79,8 @@ WResult MemStream::GetSize(wuint64 *libNewSize) {
 
 WResult MemStream::Flush() {
 	return true;
+}
+
+ObjectRef* MemStream::GetRef(int *tmp) {
+	return &this->ref;
 }

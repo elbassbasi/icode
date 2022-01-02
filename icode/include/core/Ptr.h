@@ -5,29 +5,29 @@
  *      Author: Azeddine El Bassbasi
  */
 
-#ifndef ICODE_INCLUDE_CORE_PTR_H_
-#define ICODE_INCLUDE_CORE_PTR_H_
+#ifndef ICODE_INCLUDE_CORE_SHAREDPTR_H_
+#define ICODE_INCLUDE_CORE_SHAREDPTR_H_
 #include "IObject.h"
 template<typename T>
-class Ptr {
+class SharedPtr {
 public:
 	T *obj;
-	Ptr() {
+	SharedPtr() {
 		obj = 0;
 	}
-	Ptr(T *obj) {
+	SharedPtr(T *obj) {
 		if (obj != 0)
-			obj->IncRef();
+			obj->AddRef();
 		this->obj = obj;
 	}
-	Ptr(const Ptr<T> &lp) {
+	SharedPtr(const SharedPtr<T> &lp) {
 		if (lp.obj != 0)
-			lp.obj->IncRef();
+			lp.obj->AddRef();
 		this->obj = lp.obj;
 	}
-	~Ptr() {
+	~SharedPtr() {
 		if (this->obj != 0)
-			this->obj->DecRef();
+			this->obj->Release();
 	}
 	operator T*() {
 		return this->obj;
@@ -40,32 +40,32 @@ public:
 	}
 	void operator=(T *obj) {
 		if (obj != 0)
-			obj->IncRef();
+			obj->AddRef();
 		if (this->obj != 0)
-			this->obj->DecRef();
+			this->obj->Release();
 		this->obj = obj;
 	}
-	void operator=(const Ptr<T> &lp) {
+	void operator=(const SharedPtr<T> &lp) {
 		if (lp.obj != 0)
-			lp.obj->IncRef();
+			lp.obj->AddRef();
 		if (this->obj != 0)
-			this->obj->DecRef();
+			this->obj->Release();
 		this->obj = lp.obj;
 	}
 	bool IsOk() {
 		return this->obj != 0;
 	}
-	bool operator==(const Ptr<T> &lp) {
+	bool operator==(const SharedPtr<T> &lp) {
 		return this->obj == lp.obj;
 	}
 	bool operator==(T *obj) {
 		return this->obj != obj;
 	}
-	bool operator!=(const Ptr<T> &lp) {
+	bool operator!=(const SharedPtr<T> &lp) {
 		return this->obj == lp.obj;
 	}
 	bool operator!=(T *obj) {
 		return this->obj != obj;
 	}
 };
-#endif /* ICODE_INCLUDE_CORE_PTR_H_ */
+#endif /* ICODE_INCLUDE_CORE_SHAREDPTR_H_ */

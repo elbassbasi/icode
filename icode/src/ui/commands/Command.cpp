@@ -4,22 +4,19 @@
  *  Created on: 17 mai 2020
  *      Author: Azeddine El Bassbasi
  */
-#include "Commands.h"
-
+#include "../../icode.h"
 
 IObject* Command::QueryInterface(IID Id) {
+	if (Id == IID_ICommand) {
+		return static_cast<ICommand*>(this);
+	}
 	return IObject::QueryInterface(Id);
-}
-
-int Command::IncRef() {
-	return IObject::IncRef(this->ref);
-}
-
-int Command::DecRef() {
-	return IObject::DecRef(this->ref);
 }
 
 bool Command::Execute(ExecutionEvent &event) {
 	return false;
 }
 
+ObjectRef* Command::GetRef(int *tmp) {
+	return &this->ref;
+}

@@ -10,86 +10,86 @@
 #include "../icode.h"
 class MPerspective;
 class MPartSashContainer;
-#define MPART_TYPE (0xFF)
-#define MPART_VERTICAL (1 << 8)
-#define MPART_HORIZENTAL (0)
-#define MPART_FIRST (0)
-#define MPART_LAST (1 << 9)
-#define MPART_CONTAINER_SHARED (1 << 10)
 
 #define DRAG_MINIMUM 50
 enum {
-	MPART_TYPE_UNKNOWN = 0,
-	MPART_TYPE_STACK,
-	MPART_TYPE_SASHCONTAINER,
-	MPART_TYPE_AREA,
+	MPART_TYPE_STACK = 0 << 2,
+	MPART_TYPE_SASHCONTAINER = 1 << 2,
+	MPART_TYPE_AREA = 2 << 2,
+	MPART_TYPE_MASK = 3 << 2,
+	MPART_TYPE_SHARED = 1 << 4,
+	MPART_LEFT = PerspectiveManager::M_LEFT,
+	MPART_RIGHT = PerspectiveManager::M_RIGHT,
+	MPART_TOP = PerspectiveManager::M_TOP,
+	MPART_BOTTOM = PerspectiveManager::M_BOTTOM,
+	MPART_MASK = 0x3,
 };
 class MPart0 {
 public:
 	MPart0();
 	virtual ~MPart0();
-	MPart0 *parent;
+	MPart0 *parentPart;
 	const char *name;
+	wuint64 weight;
 	int flags;
 	int GetType() {
-		return (this->flags & MPART_TYPE);
+		return (this->flags & MPART_TYPE_MASK);
 	}
+	static inline bool IsVertical(int flags) {
+		return (flags & MPART_MASK) == MPART_LEFT
+				|| (flags & MPART_MASK) == MPART_RIGHT;
+	}
+	virtual void UpdateBounds(WRect &r)=0;
+	virtual void GetPartBounds(WRect &r)=0;
 };
 
-class MPartStack: public MPart0, public IFolderLayout, public WTabView {
+class MPartStack: public MPart0, public WTabView, public IFolderLayout {
 public:
-	int weight;
+	int id;
 	MPartStack();
 	~MPartStack();
+	ObjectRef* GetRef(int *tmp);
 	void GetPartBounds(WRect &r);
 	void UpdateBounds(WRect &r);
 	void SetWeight(int weight);
-	void AddView(const char *viewId);
+	void AddView(StringId *viewId);
+protected:
+	bool OnItemClose(WTabEvent &e);
 };
-class MPartSashContainer: public MPart0 {
+class MPartSashContainer: public MPart0, public WSash {
 public:
-	int weight;
 	MPart0 *first;
 	MPart0 *last;
-	WSash sash;
 	MPartSashContainer();
 	~MPartSashContainer();
-	int GetFirstWeight();
-	int GetLastWeight();
-	void SetFirstWeight(int weight);
-	void SetLastWeight(int weight);
 	void GetPartBounds(WRect &r);
 	void GetChildBounds(WRect &r, MPart0 *child);
 	void UpdateBounds(WRect &r);
-	void SetWeight(int first, int last);
+	void SetWeight(wuint64 first, wuint64 last);
+protected:
+	bool OnSelection(WSashEvent &e);
 };
 
 class MArea: public MPart0 {
 public:
 	MPart0 *root;
 	MPartStack *sharedPart;
-	MArea(MPerspective *parent);
+	MArea(MWindow *parent);
 	~MArea();
-	MPartStack* Div(MPartStack *parent, int flags);
+	MPartStack* FindPartId(MPart0 *part, int refIndex);
+	void LoadFolders(PerspectiveFolder *folders, int count);
+	MPartStack* Div(MPartStack *parent, float ratio, int flags);
 	void GetPartBounds(WRect &r);
+	void UpdateBounds();
 	void UpdateBounds(WRect &r);
-	bool UpdateSash(WSashEvent *event);
-	MPerspective* GetPerspective() {
-		return (MPerspective*) this->parent;
+	MWindow* GetWindow() {
+		return (MWindow*) this->parentPart;
 	}
 	MPartStack* GetSharedPart() {
 		return this->sharedPart;
 	}
 
 	MPartStack* CreateSharedPart();
-	WComposite* GetComposite();
-public:
-	/*
-	 * test
-	 */
-	void test();
-	void testControl(MPartStack *container, const char *name);
-	MPartStack* testDiv(MPartStack *parent, const char *name, int flags);
 };
 
 #endif /* ICODE_MODEL_MAREA_H_ */

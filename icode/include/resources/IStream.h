@@ -10,7 +10,6 @@
 #include "../core/core.h"
 class ICODE_PUBLIC IStream: public IObject {
 public:
-	IID_CLASS_PLATFORM(IStream,2,0);
 	IStream();
 	~IStream();
 	virtual WResult Close()=0;
@@ -36,5 +35,9 @@ public:
 		return pcbWritten;
 	}
 };
+template<>
+inline const IID __IID<IStream>() {
+	return IID_IStream;
+}
 
 #endif /* ICODE_INCLUDE_RESOURCES_IINPUTSTREAM_H_ */

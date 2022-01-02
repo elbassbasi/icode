@@ -10,7 +10,7 @@
 #include "IStream.h"
 class MemStream: public IStream {
 protected:
-	int ref;
+	ObjectRef ref;
 	int flags;
 	char *memory;
 	size_t allocated;
@@ -23,8 +23,7 @@ public:
 	MemStream();
 	~MemStream();
 	IObject* QueryInterface(IID Id);
-	int IncRef();
-	int DecRef();
+	ObjectRef* GetRef(int *tmp);
 	bool GetProperty(IID Id,WValue& value);
 	bool SetProperty(IID Id,WValue& value);
 	WResult Close();

@@ -8,7 +8,6 @@
 #include "../icode.h"
 FileStream::FileStream() {
 	this->file = 0;
-	this->ref = 0;
 }
 
 FileStream::~FileStream() {
@@ -16,26 +15,18 @@ FileStream::~FileStream() {
 
 IObject* FileStream::QueryInterface(IID Id) {
 	switch (Id) {
-	case iid_IStream:
-		return Cast<IStream>();
+	case IID_IStream:
+		return static_cast<IStream*>(this);
 		break;
 	}
 	return IObject::QueryInterface(Id);
 }
 
-int FileStream::IncRef() {
-	return IObject::IncRef(ref);
-}
-
-int FileStream::DecRef() {
-	return IObject::DecRef(ref);
-}
-
-bool FileStream::GetProperty(IID Id,WValue& value) {
+bool FileStream::GetProperty(IID Id, WValue &value) {
 	return 0;
 }
 
-bool FileStream::SetProperty(IID Id,WValue& value) {
+bool FileStream::SetProperty(IID Id, WValue &value) {
 	return false;
 }
 bool FileStream::Open(const char *file, const char *mode) {
@@ -106,7 +97,17 @@ WResult FileStream::SetSize(wuint64 libNewSize) {
 
 WResult FileStream::GetSize(wuint64 *libNewSize) {
 	if (this->file != 0) {
+		size_t current = ftell(this->file);
+		fseek(this->file, 0L, SEEK_END);
+		*libNewSize = ftell(this->file);
+		fseek(this->file, current, SEEK_SET);
 		return true;
-	} else
+	} else {
+		*libNewSize = 0;
 		return false;
+	}
+}
+
+ObjectRef* FileStream::GetRef(int *tmp) {
+	return &this->ref;
 }

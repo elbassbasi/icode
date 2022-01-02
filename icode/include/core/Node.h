@@ -7,53 +7,12 @@
 
 #ifndef INCLUDE_ICODE_CORE_LINKEDLIST_H_
 #define INCLUDE_ICODE_CORE_LINKEDLIST_H_
+#include "defs.h"
 
-class BasicLink {
-public:
-	friend class BasicList;
-	BasicLink *next;
-	BasicLink *prev;
-	template<class T>
-	T& Next() {
-		return static_cast<T&>(*this->next);
-	}
-	template<class T>
-	T& Prev() {
-		return static_cast<T&>(*this->prev);
-	}
-};
-
-class BasicList {
-public:
-	BasicLink *first;
-	BasicLink *last;
-	int size;
-public:
-	BasicList();
-	~BasicList();
-	void LinkFirst(BasicLink *e);
-	void LinkLast(BasicLink *e);
-	void LinkBefore(BasicLink *e, BasicLink *next);
-	void LinkAfter(BasicLink *e, BasicLink *prev);
-	BasicLink* UnlinkFirst();
-	BasicLink* UnlinkLast();
-	void Unlink(BasicLink *x);
-	void Replace(BasicLink *x, BasicLink *e);
-	BasicLink* Get(int index);
-	BasicLink* Set(int index, BasicLink *e);
-	int GetSize() {
-		return this->size;
-	}
-	void Add(BasicLink *e) {
-		LinkLast(e);
-	}
-	void Add(int index, BasicLink *e);
-	BasicLink* Remove(int index);
-};
 template<class T>
-class LinkedList: protected BasicList {
+class LinkedList {
 public:
-	class LinkedListData: public BasicLink {
+	class LinkedListData: public WLink<LinkedListData> {
 	public:
 		T data;
 		LinkedListData() {
@@ -62,19 +21,26 @@ public:
 		LinkedListData(T &data) :
 				T(data) {
 		}
-		LinkedListData* GetNext() {
-			return (LinkedListData*) this->next;
-		}
-		LinkedListData* GetPrev() {
-			return (LinkedListData*) this->prev;
-		}
 	};
-	T& Get(int index) {
-		LinkedListData *data = (LinkedListData*) BasicList::Get(index);
-		return data->data;
+protected:
+	LinkedListData *first;
+	size_t count;
+public:
+	LinkedList() {
+		this->first = 0;
+		this->count = 0;
+	}
+	LinkedListData* GetL(size_t index) {
+		LinkedListData *x = first;
+		for (int i = 0; i < index; i++)
+			x = x->next;
+		return *x;
+	}
+	T& Get(size_t index) {
+		return GetL(index)->data;
 	}
 	void Set(int index, T &data) {
-		LinkedListData *d = (LinkedListData*) BasicList::Get(index);
+		LinkedListData *d = GetL(index);
 		d->data = data;
 	}
 	T& operator[](int index) {
@@ -82,17 +48,22 @@ public:
 	}
 	void Add(T &data) {
 		LinkedListData *d = new LinkedListData(data);
-		BasicList::Add(d);
+		d->LinkLast(d, first);
+		this->count++;
 	}
 	void Add(int index, T &data) {
 		LinkedListData *d = new LinkedListData(data);
-		BasicList::Add(index, d);
+		LinkedListData *l = GetL(index);
+		d->LinkBefore(d, l, first);
+		this->count++;
 	}
 	int GetSize() {
-		return BasicList::GetSize();
+		return count;
 	}
 	LinkedListData* Remove(int index) {
-		return (LinkedListData*) BasicList::Remove(index);
+		LinkedListData *d = GetL(index);
+		d->Unlink(d, first);
+		return d;
 	}
 	void Delete(int index) {
 		LinkedListData *d = Remove(index);
@@ -107,16 +78,10 @@ public:
 		}
 	}
 	T* ToArray() {
-		T *array = new T[this->size];
-		ToArray(array, this->size);
+		T *array = new T[this->count];
+		ToArray(array, this->count);
 		return array;
 	}
-};
-
-class BasicNode: public BasicLink, public BasicList {
-public:
-	BasicNode();
-	~BasicNode();
 };
 
 #endif /* INCLUDE_ICODE_CORE_LINKEDLIST_H_ */

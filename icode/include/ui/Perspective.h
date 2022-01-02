@@ -10,7 +10,7 @@
 #include "IViewPart.h"
 class IFolderLayout: public IObject {
 public:
-	virtual void AddView(const char* viewId)=0;
+	virtual void AddView(StringId* viewId)=0;
 };
 
 class IPageLayout: public IObject {
